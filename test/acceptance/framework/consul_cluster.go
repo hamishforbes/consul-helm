@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/sdk/freeport"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -91,7 +92,8 @@ func (h *HelmCluster) Create(t *testing.T) {
 	// Fail if there are any existing installations of the Helm chart.
 	h.checkForPriorInstallations(t)
 
-	helm.Install(t, h.helmOptions, helmChartPath, h.releaseName)
+	err := helm.InstallE(t, h.helmOptions, helmChartPath, h.releaseName)
+	require.NoError(t, err)
 
 	helpers.WaitForAllPodsToBeReady(t, h.kubernetesClient, h.helmOptions.KubectlOptions.Namespace, fmt.Sprintf("release=%s", h.releaseName))
 }
@@ -106,23 +108,27 @@ func (h *HelmCluster) Destroy(t *testing.T) {
 	// delete PVCs
 	h.kubernetesClient.CoreV1().PersistentVolumeClaims(h.helmOptions.KubectlOptions.Namespace).DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: "release=" + h.releaseName})
 
-	// delete any secrets that have h.releaseName in their name
-	secrets, err := h.kubernetesClient.CoreV1().Secrets(h.helmOptions.KubectlOptions.Namespace).List(metav1.ListOptions{})
-	require.NoError(t, err)
-	for _, secret := range secrets.Items {
-		if strings.Contains(secret.Name, h.releaseName) {
-			err := h.kubernetesClient.CoreV1().Secrets(h.helmOptions.KubectlOptions.Namespace).Delete(secret.Name, nil)
-			require.NoError(t, err)
-		}
-	}
-
 	// delete any serviceaccounts that have h.releaseName in their name
 	sas, err := h.kubernetesClient.CoreV1().ServiceAccounts(h.helmOptions.KubectlOptions.Namespace).List(metav1.ListOptions{})
 	require.NoError(t, err)
 	for _, sa := range sas.Items {
 		if strings.Contains(sa.Name, h.releaseName) {
 			err := h.kubernetesClient.CoreV1().ServiceAccounts(h.helmOptions.KubectlOptions.Namespace).Delete(sa.Name, nil)
-			require.NoError(t, err)
+			if !errors.IsNotFound(err) {
+				require.NoError(t, err)
+			}
+		}
+	}
+
+	// delete any secrets that have h.releaseName in their name
+	secrets, err := h.kubernetesClient.CoreV1().Secrets(h.helmOptions.KubectlOptions.Namespace).List(metav1.ListOptions{})
+	require.NoError(t, err)
+	for _, secret := range secrets.Items {
+		if strings.Contains(secret.Name, h.releaseName) {
+			err := h.kubernetesClient.CoreV1().Secrets(h.helmOptions.KubectlOptions.Namespace).Delete(secret.Name, nil)
+			if !errors.IsNotFound(err) {
+				require.NoError(t, err)
+			}
 		}
 	}
 }
