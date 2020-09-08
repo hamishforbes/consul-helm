@@ -74,14 +74,14 @@ func TestIngressGatewaySingleNamespace(t *testing.T) {
 			})
 
 			t.Logf("creating Kubernetes namespace %s", testNamespace)
-			helpers.RunKubectl(t, ctx.KubectlOptions(), "create", "ns", testNamespace)
+			helpers.RunKubectl(t, ctx.KubectlOptions(t), "create", "ns", testNamespace)
 			helpers.Cleanup(t, cfg.NoCleanupOnFailure, func() {
-				helpers.RunKubectl(t, ctx.KubectlOptions(), "delete", "ns", testNamespace)
+				helpers.RunKubectl(t, ctx.KubectlOptions(t), "delete", "ns", testNamespace)
 			})
 
 			nsK8SOptions := &k8s.KubectlOptions{
-				ContextName: ctx.KubectlOptions().ContextName,
-				ConfigPath:  ctx.KubectlOptions().ConfigPath,
+				ContextName: ctx.KubectlOptions(t).ContextName,
+				ConfigPath:  ctx.KubectlOptions(t).ConfigPath,
 				Namespace:   testNamespace,
 			}
 
@@ -115,7 +115,7 @@ func TestIngressGatewaySingleNamespace(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, true, created, "config entry failed")
 
-			ingressGatewayService := fmt.Sprintf("http://%s-consul-ingress-gateway.%s:8080/", releaseName, ctx.KubectlOptions().Namespace)
+			ingressGatewayService := fmt.Sprintf("http://%s-consul-ingress-gateway.%s:8080/", releaseName, ctx.KubectlOptions(t).Namespace)
 
 			// If ACLs are enabled, test that intentions prevent connections.
 			if c.secure {
@@ -189,14 +189,14 @@ func TestIngressGatewayNamespaceMirroring(t *testing.T) {
 			consulCluster.Create(t)
 
 			t.Logf("creating Kubernetes namespace %s", testNamespace)
-			helpers.RunKubectl(t, ctx.KubectlOptions(), "create", "ns", testNamespace)
+			helpers.RunKubectl(t, ctx.KubectlOptions(t), "create", "ns", testNamespace)
 			helpers.Cleanup(t, cfg.NoCleanupOnFailure, func() {
-				helpers.RunKubectl(t, ctx.KubectlOptions(), "delete", "ns", testNamespace)
+				helpers.RunKubectl(t, ctx.KubectlOptions(t), "delete", "ns", testNamespace)
 			})
 
 			nsK8SOptions := &k8s.KubectlOptions{
-				ContextName: ctx.KubectlOptions().ContextName,
-				ConfigPath:  ctx.KubectlOptions().ConfigPath,
+				ContextName: ctx.KubectlOptions(t).ContextName,
+				ConfigPath:  ctx.KubectlOptions(t).ConfigPath,
 				Namespace:   testNamespace,
 			}
 
@@ -232,7 +232,7 @@ func TestIngressGatewayNamespaceMirroring(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, true, created, "config entry failed")
 
-			ingressGatewayService := fmt.Sprintf("http://%s-consul-ingress-gateway.%s:8080/", releaseName, ctx.KubectlOptions().Namespace)
+			ingressGatewayService := fmt.Sprintf("http://%s-consul-ingress-gateway.%s:8080/", releaseName, ctx.KubectlOptions(t).Namespace)
 
 			// If ACLs are enabled, test that intentions prevent connections.
 			if c.secure {

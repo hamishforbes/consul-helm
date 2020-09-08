@@ -23,6 +23,8 @@ type TestConfig struct {
 	EnterpriseLicenseSecretName string
 	EnterpriseLicenseSecretKey  string
 
+	EnableOpenshift bool
+
 	ConsulImage    string
 	ConsulK8SImage string
 
@@ -48,6 +50,11 @@ func (t *TestConfig) HelmValuesFromConfig() (map[string]string, error) {
 	if t.EnterpriseLicenseSecretName != "" && t.EnterpriseLicenseSecretKey != "" {
 		setIfNotEmpty(helmValues, "server.enterpriseLicense.secretName", t.EnterpriseLicenseSecretName)
 		setIfNotEmpty(helmValues, "server.enterpriseLicense.secretKey", t.EnterpriseLicenseSecretKey)
+	}
+
+	// todo add tests
+	if t.EnableOpenshift {
+		setIfNotEmpty(helmValues, "global.openshift.enabled", "true")
 	}
 
 	setIfNotEmpty(helmValues, "global.image", t.ConsulImage)

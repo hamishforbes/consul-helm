@@ -58,7 +58,7 @@ spec:
     {{- end }}
       terminationGracePeriodSeconds: 30
       serviceAccountName: {{ template "consul.fullname" . }}-server
-      {{- if not .Values.server.disableFsGroupSecurityContext }}
+      {{- if not (or .Values.server.disableFsGroupSecurityContext .Values.global.openshift.enabled)}}
       securityContext:
         fsGroup: 1000
       {{- end }}

@@ -1,6 +1,7 @@
 package framework
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -67,7 +68,7 @@ func NewHelmCluster(
 
 	opts := &helm.Options{
 		SetValues:      values,
-		KubectlOptions: ctx.KubectlOptions(),
+		KubectlOptions: ctx.KubectlOptions(t),
 		Logger:         logger.TestingT,
 	}
 	return &HelmCluster{
@@ -106,14 +107,14 @@ func (h *HelmCluster) Destroy(t *testing.T) {
 	helm.Delete(t, h.helmOptions, h.releaseName, false)
 
 	// delete PVCs
-	h.kubernetesClient.CoreV1().PersistentVolumeClaims(h.helmOptions.KubectlOptions.Namespace).DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: "release=" + h.releaseName})
+	h.kubernetesClient.CoreV1().PersistentVolumeClaims(h.helmOptions.KubectlOptions.Namespace).DeleteCollection(context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: "release=" + h.releaseName})
 
 	// delete any serviceaccounts that have h.releaseName in their name
-	sas, err := h.kubernetesClient.CoreV1().ServiceAccounts(h.helmOptions.KubectlOptions.Namespace).List(metav1.ListOptions{})
+	sas, err := h.kubernetesClient.CoreV1().ServiceAccounts(h.helmOptions.KubectlOptions.Namespace).List(context.TODO(), metav1.ListOptions{})
 	require.NoError(t, err)
 	for _, sa := range sas.Items {
 		if strings.Contains(sa.Name, h.releaseName) {
-			err := h.kubernetesClient.CoreV1().ServiceAccounts(h.helmOptions.KubectlOptions.Namespace).Delete(sa.Name, nil)
+			err := h.kubernetesClient.CoreV1().ServiceAccounts(h.helmOptions.KubectlOptions.Namespace).Delete(context.TODO(), sa.Name, metav1.DeleteOptions{})
 			if !errors.IsNotFound(err) {
 				require.NoError(t, err)
 			}
@@ -121,11 +122,11 @@ func (h *HelmCluster) Destroy(t *testing.T) {
 	}
 
 	// delete any secrets that have h.releaseName in their name
-	secrets, err := h.kubernetesClient.CoreV1().Secrets(h.helmOptions.KubectlOptions.Namespace).List(metav1.ListOptions{})
+	secrets, err := h.kubernetesClient.CoreV1().Secrets(h.helmOptions.KubectlOptions.Namespace).List(context.TODO(), metav1.ListOptions{})
 	require.NoError(t, err)
 	for _, secret := range secrets.Items {
 		if strings.Contains(secret.Name, h.releaseName) {
-			err := h.kubernetesClient.CoreV1().Secrets(h.helmOptions.KubectlOptions.Namespace).Delete(secret.Name, nil)
+			err := h.kubernetesClient.CoreV1().Secrets(h.helmOptions.KubectlOptions.Namespace).Delete(context.TODO(), secret.Name, metav1.DeleteOptions{})
 			if !errors.IsNotFound(err) {
 				require.NoError(t, err)
 			}
@@ -154,7 +155,7 @@ func (h *HelmCluster) SetupConsulClient(t *testing.T, secure bool) *api.Client {
 		remotePort = 8501
 
 		// get the CA
-		caSecret, err := h.kubernetesClient.CoreV1().Secrets(namespace).Get(h.releaseName+"-consul-ca-cert", metav1.GetOptions{})
+		caSecret, err := h.kubernetesClient.CoreV1().Secrets(namespace).Get(context.TODO(), h.releaseName+"-consul-ca-cert", metav1.GetOptions{})
 		require.NoError(t, err)
 		caFile, err := ioutil.TempFile("", "")
 		require.NoError(t, err)
@@ -168,7 +169,7 @@ func (h *HelmCluster) SetupConsulClient(t *testing.T, secure bool) *api.Client {
 		}
 
 		// get the ACL token
-		aclSecret, err := h.kubernetesClient.CoreV1().Secrets(namespace).Get(h.releaseName+"-consul-bootstrap-acl-token", metav1.GetOptions{})
+		aclSecret, err := h.kubernetesClient.CoreV1().Secrets(namespace).Get(context.TODO(), h.releaseName+"-consul-bootstrap-acl-token", metav1.GetOptions{})
 		require.NoError(t, err)
 
 		config.TLSConfig.CAFile = caFile.Name()

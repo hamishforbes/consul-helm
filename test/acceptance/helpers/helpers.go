@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -39,8 +40,9 @@ func WaitForAllPodsToBeReady(t *testing.T, client kubernetes.Interface, namespac
 	// Wait up to 3m.
 	counter := &retry.Counter{Count: 36, Wait: 5 * time.Second}
 	retry.RunWith(counter, t, func(r *retry.R) {
-		pods, err := client.CoreV1().Pods(namespace).List(metav1.ListOptions{LabelSelector: podLabelSelector})
+		pods, err := client.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: podLabelSelector})
 		require.NoError(r, err)
+		require.NotEmpty(r, pods.Items)
 		var numNotReadyContainers int
 		var totalNumContainers int
 		for _, pod := range pods.Items {
@@ -61,6 +63,7 @@ func WaitForAllPodsToBeReady(t *testing.T, client kubernetes.Interface, namespac
 			}
 		}
 		if numNotReadyContainers != 0 {
+			t.Logf("%d out of %d containers are ready", totalNumContainers-numNotReadyContainers, totalNumContainers)
 			r.Errorf("%d out of %d containers are ready", totalNumContainers-numNotReadyContainers, totalNumContainers)
 		}
 	})
@@ -188,14 +191,14 @@ func WritePodsDebugInfoIfFailed(t *testing.T, kubectlOptions *k8s.KubectlOptions
 		// Create k8s client from kubectl options
 		client := KubernetesClientFromOptions(t, kubectlOptions)
 
-		contextName := kubernetesContextFromOptions(t, kubectlOptions)
+		contextName := KubernetesContextFromOptions(t, kubectlOptions)
 
 		// Create a directory for the test
 		testDebugDirectory := filepath.Join(debugDirectory, t.Name(), contextName)
 		require.NoError(t, os.MkdirAll(testDebugDirectory, 0755))
 
 		t.Logf("dumping logs and pod info for %s to %s", labelSelector, testDebugDirectory)
-		pods, err := client.CoreV1().Pods(kubectlOptions.Namespace).List(metav1.ListOptions{LabelSelector: labelSelector})
+		pods, err := client.CoreV1().Pods(kubectlOptions.Namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector})
 		require.NoError(t, err)
 
 		for _, pod := range pods.Items {
@@ -232,10 +235,10 @@ func KubernetesClientFromOptions(t *testing.T, options *k8s.KubectlOptions) kube
 	return client
 }
 
-// kubernetesContextFromOptions returns the Kubernetes context from options.
+// KubernetesContextFromOptions returns the Kubernetes context from options.
 // If context is explicitly set in options, it returns that context.
 // Otherwise, it returns the current context.
-func kubernetesContextFromOptions(t *testing.T, options *k8s.KubectlOptions) string {
+func KubernetesContextFromOptions(t *testing.T, options *k8s.KubectlOptions) string {
 	t.Helper()
 
 	// First, check if context set in options and return that
