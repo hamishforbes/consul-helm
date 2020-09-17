@@ -120,7 +120,7 @@ func TestControllerNamespaces(t *testing.T) {
 				// the reconcile loop to run (hence the 20s timeout here).
 				counter := &retry.Counter{Count: 20, Wait: 1 * time.Second}
 				retry.RunWith(counter, t, func(r *retry.R) {
-					entry, _, err := consulClient.ConfigEntries().Get(api.ServiceDefaults, "foo", queryOpts)
+					entry, _, err := consulClient.ConfigEntries().Get(api.ServiceDefaults, "defaults", queryOpts)
 					require.NoError(r, err, "ns: %s", queryOpts.Namespace)
 
 					svcDefaultEntry, ok := entry.(*api.ServiceConfigEntry)
@@ -132,11 +132,11 @@ func TestControllerNamespaces(t *testing.T) {
 			// Test an update.
 			{
 				t.Log("patching service-defaults CRD")
-				helpers.RunKubectl(t, ctx.KubectlOptions(), "patch", "-n", KubeNS, "servicedefaults", "foo", "-p", `{"spec":{"protocol":"tcp"}}`, "--type=merge")
+				helpers.RunKubectl(t, ctx.KubectlOptions(), "patch", "-n", KubeNS, "servicedefaults", "defaults", "-p", `{"spec":{"protocol":"tcp"}}`, "--type=merge")
 
 				counter := &retry.Counter{Count: 10, Wait: 500 * time.Millisecond}
 				retry.RunWith(counter, t, func(r *retry.R) {
-					entry, _, err := consulClient.ConfigEntries().Get(api.ServiceDefaults, "foo", queryOpts)
+					entry, _, err := consulClient.ConfigEntries().Get(api.ServiceDefaults, "defaults", queryOpts)
 					require.NoError(r, err, "ns: %s", queryOpts.Namespace)
 
 					svcDefaultEntry, ok := entry.(*api.ServiceConfigEntry)
@@ -148,11 +148,11 @@ func TestControllerNamespaces(t *testing.T) {
 			// Test a delete.
 			{
 				t.Log("deleting service-defaults CRD")
-				helpers.RunKubectl(t, ctx.KubectlOptions(), "delete", "-n", KubeNS, "servicedefaults", "foo")
+				helpers.RunKubectl(t, ctx.KubectlOptions(), "delete", "-n", KubeNS, "servicedefaults", "defaults")
 
 				counter := &retry.Counter{Count: 10, Wait: 500 * time.Millisecond}
 				retry.RunWith(counter, t, func(r *retry.R) {
-					_, _, err := consulClient.ConfigEntries().Get(api.ServiceDefaults, "foo", queryOpts)
+					_, _, err := consulClient.ConfigEntries().Get(api.ServiceDefaults, "defaults", queryOpts)
 					require.Error(r, err)
 					require.Contains(r, err.Error(), "404 (Config entry not found")
 				})
